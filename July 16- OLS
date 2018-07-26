@@ -1,0 +1,85 @@
+##############################################################################################
+### Running the OLS regression model #########################################################
+##############################################################################################
+# The OLS regression will be the number of calls per tract explained by demographic variables 
+# and whether of not it is a tourist area or not...
+number_per_tract <- july12_calls %>% group_by(TRACTCE10) %>%
+  summarize(number_per_tract = n())
+
+# Merge this column with the census data
+july12_census<- merge(july12_census, number_per_tract,  by = "TRACTCE10")
+summary(july12_census)
+
+### Choosing to remove outlier or not? Not going to remove outliers because this isn't a mistake in the
+### data. Also high income could be important characteristic to understand about tourist areas if 
+### that is what the data shows. 
+
+# Since med income is so much larger than the rest of the variables being added to the regression
+# model we have to normalize it or transform it. Let's take a look: 
+# 
+hist(log(july12_census$med_income))
+hist(sqrt(july12_census$med_income))
+hist((july12_census$med_income))
+
+#Anderson Darling test
+med <- log(july12_census$med_income)
+ad.test(med)
+#Anderson-Darling normality test
+
+#data:  med
+#A = 0.35792, p-value = 0.451
+
+#Turn tourist into a binary variable: 
+#Create function for binary tourist
+binary.tourist <- function(x){
+  for(i in 1:length(x)){
+    if(x[i] == "Tourist"){
+      x[i]<- "1"
+    }else{
+      x[i]<- "0"
+    }
+  } 
+  print(x)
+}
+july12_census$bi_tourist <- binary.tourist(july12_census$tourist)
+july12_census$log_med_income <- log(july12_census$med_income)
+
+# Now run the ols model
+attach(july12_census)
+lin.mod1 <- lm(number_per_tract.x ~ log_med_income+ perc_under_poverty + perc_unemployment_rate +
+                 perc_white + perc_hispanic + perc_ed_college + perc_non_citizen+ bi_tourist)
+summary(lin.mod1)
+#Call:
+#  lm(formula = number_per_tract.x ~ log_med_income + perc_under_poverty + 
+#       perc_unemployment_rate + perc_white + perc_hispanic + perc_ed_college + 
+#       perc_non_citizen + bi_tourist)
+
+#Residuals:
+#  Min      1Q  Median      3Q     Max 
+#-1436.5  -584.8  -221.1   342.8  4415.2 
+
+#Coefficients:
+#                        Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)            -3809.292   2898.022  -1.314  0.18993    
+#log_med_income           580.171    260.904   2.224  0.02709 *  
+#perc_under_poverty         6.123     10.045   0.610  0.54272    
+#perc_unemployment_rate    26.079     19.053   1.369  0.17234    
+#perc_white               -16.666      6.681  -2.494  0.01328 *  
+#perc_hispanic              3.643      3.612   1.009  0.31414    
+#perc_ed_college          -34.523     11.994  -2.878  0.00435 ** 
+#perc_non_citizen         -39.248      8.214  -4.778 3.05e-06 ***
+#bi_tourist1             -148.108    222.970  -0.664  0.50716    
+#---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#Residual standard error: 1003 on 244 degrees of freedom
+#Multiple R-squared:  0.2968,	Adjusted R-squared:  0.2738 
+#F-statistic: 12.88 on 8 and 244 DF,  p-value: 1.928e-15
+
+# Doing diagnostics
+#Functional form plot for homoskedasticity. It appears as a funnel
+plot(y=lin.mod1$residuals, x=lin.mod1$fitted.values, xlab = "Fitted Values")
+qqnorm(lin.mod1$residuals)
+qqline(lin.mod1$residuals)
+#Scale location plot for homoskedasticity. It shows a pattern so non normal
+plot(y=sqrt(lin.mod1$residuals), x=lin.mod1$fitted.values, xlab = "Fitted Values")
