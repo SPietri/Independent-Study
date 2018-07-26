@@ -1,0 +1,12 @@
+### This changes the tourist column to a binary format for the logistic regression 
+
+function(x){
+  for(i in 1:length(x)){
+    if(x[i] == "Tourist"){
+      x[i]<- "1"
+    }else{
+      x[i]<- "0"
+    }
+  } 
+  print(x)
+}
