@@ -1,0 +1,144 @@
+
+#******** Under construction *********#
+#******** Still interpreting *********#
+
+
+#########################################################################################
+### Running the Logistic Regression #####################################################
+#########################################################################################
+head(july12_calls$bi_delayed)
+
+# Add the binary tourist 
+july12_calls$bi_tourist <- binary.tourist(july12_calls$tourist)
+
+# Select census variables
+census_for_comb <- july12_census %>% select(TRACTCE10, med_income, perc_under_poverty, 
+                                            perc_unemployment_rate, perc_white, perc_hispanic,
+                                            perc_ed_college, perc_non_citizen, log_med_income)
+comb_data<- left_join(july12_calls, census_for_comb, by="TRACTCE10")
+glimpse(comb_data)
+comb_data$bi_delayed <- factor(as.numeric(comb_data$bi_delayed))
+factor(comb_data$bi_tourist)
+
+# Run the regression model
+attach(comb_data)
+logit1<- glm(bi_delayed ~ bi_tourist +log_med_income+ perc_under_poverty+
+    perc_unemployment_rate+ perc_white+ perc_hispanic+ perc_ed_college+ perc_non_citizen, 
+    family = binomial(link = "logit"))
+summary(logit1)
+
+#Call:
+#  glm(formula = bi_delayed ~ bi_tourist + log_med_income + perc_under_poverty + 
+#        perc_unemployment_rate + perc_white + perc_hispanic + perc_ed_college + 
+#        perc_non_citizen, family = binomial(link = "logit"))
+
+#Deviance Residuals: 
+#  Min       1Q   Median       3Q      Max  
+#-0.7781  -0.6365  -0.6006  -0.5569   2.0269  
+
+#Coefficients:
+#                         Estimate Std. Error z value Pr(>|z|)    
+#(Intercept)             0.1825616  0.2612221   0.699 0.484630    
+#bi_tourist1             0.2331663  0.0219371  10.629  < 2e-16 ***
+#log_med_income         -0.1532221  0.0233672  -6.557 5.48e-11 ***
+#perc_under_poverty     -0.0007717  0.0007991  -0.966 0.334239    
+#perc_unemployment_rate -0.0016992  0.0015381  -1.105 0.269287    
+#perc_white             -0.0000891  0.0006691  -0.133 0.894067    
+#perc_hispanic          -0.0052222  0.0002840 -18.391  < 2e-16 ***
+#perc_ed_college         0.0039372  0.0010835   3.634 0.000279 ***
+#perc_non_citizen        0.0080466  0.0007272  11.065  < 2e-16 ***
+  #---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#(Dispersion parameter for binomial family taken to be 1)
+
+#Null deviance: 270227  on 293814  degrees of freedom
+#Residual deviance: 269262  on 293806  degrees of freedom
+#AIC: 269280
+
+#Number of Fisher Scoring iterations: 4
+
+Log odds
+log(0.1825616 +0.2331663 - 0.1532221 - 0.0007717 - 0.0016992 - 0.0000891 - 0.0052222 + 0.0039372 + 0.0080466)
+#[1] -1.321603
+exp(0.1825616 +0.2331663 - 0.1532221 - 0.0007717 - 0.0016992 - 0.0000891 - 0.0052222 + 0.0039372 + 0.0080466)
+#[1] 1.305658
+
+# From zero to one of tourist increases the logs odd ration of the call being delayed. Log odds raatio of being delayed is...
+# Interpret tourist in logs odd 65%
+
+# pseudo R^2 can be seen below. This would indicate the model 
+# explains the data very well. 
+1- (270227 - 269262)/270227
+#[1]  0.9964289 
+
+# Odds ratios 
+exp(logit1$coefficients[-1])
+#bi_tourist1         log_med_income     perc_under_poverty perc_unemployment_rate 
+#1.2625915              0.8579392              0.9992286              0.9983023 
+#perc_white          perc_hispanic        perc_ed_college       perc_non_citizen 
+#0.9999109              0.9947914              1.0039450              1.0080791 
+
+# log-liklihood ratio statistic. Small T value indicates this isn't necessarily better than
+# the null model. 
+270227-269262
+    #[1] 965
+
+# Doing an ROC curve which is a plot of the tru positive rate against the false positive 
+# rate. 
+pred <- predict(logit1, type="response")
+predObj <- prediction(pred, comb_data$bi_delayed)
+rocObj <- performance(predObj, measure = "tpr", x.measure ="fpr")
+acuObj <- performance(predObj, measure="auc")
+plot(rocObj, main = paste("Area under the curve:", round(acuObj @y.values[[1]], 4)))
+# Model only slightly above average almost random. Stay in upper left hand (most restrictive)
+# Predicting delayed var, high trus but low false. 
+
+# Bias in deadlines. Per category/ may have dif deadlines. Invest calls
+# that could be predicted. Should we include other variables. 
+
+# Logistic Columbia
+# We are interesting in determing the probability of a call being delayed based on the demographic
+# variables of the tract the call comes from. 
+logit1
+   #the formula is logit(pi-i) = 0.18 + 0.23*bi_tour...+
+# We test the fit of the model through the liklihood ratio test. So it compares
+# the null model(with no explanatory variables) to the model with
+# explanatory variables.
+attach(comb_data)
+#This makes a model with just the variable we want to test
+logit1.reduced <- glm(bi_delayed ~1, family = binomial)
+#this compares the two models one with explan vars and one with just the intercept
+anova(logit1.reduced, logit1, test = "Chisq")
+#Analysis of Deviance Table
+
+#Model 1: bi_delayed ~ 1
+#Model 2: bi_delayed ~ bi_tourist + log_med_income + perc_under_poverty + 
+#  perc_unemployment_rate + perc_white + perc_hispanic + perc_ed_college + 
+#  perc_non_citizen
+#Resid. Df Resid. Dev Df Deviance  Pr(>Chi)    
+#1    293814     270227                          
+#2    293806     269262  8   965.05 < 2.2e-16 ***
+ # ---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+#So from the results above the liklihood ratio test statistic is 965.05 and
+# the pvalue is 2.2e-16. Since the p-vale is small there is strong evidence 
+# in favor of regecting the null. The variables improve the model. 
+# https://stats.stackexchange.com/questions/59879/logistic-regression-anova-chi-square-test-vs-significance-of-coefficients-ano 
+
+# Compare on individual regression parameters 
+summary(logit1)
+# will look at perc_non_citizen its p value is 2e-16 
+exp(coef(logit1))
+#perc_non_citizen 
+#1.0080791 
+
+exp(confint.default(logit1))
+#perc_non_citizen       1.0066432 1.0095170
+# the odds ratio falls in the confidence interval. This implies if we fix the 
+# other variables, increasing perc_non_citizen 
+# by 1 unit will increase the odds the call is delayed by .008 (from the summary)
+
+
+
+### New task: Try the regression models by category...
