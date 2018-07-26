@@ -1,0 +1,25 @@
+######################################################################################
+#### Do the t tests ##################################################################
+######################################################################################
+### Not checking varience any more because we did it the first time around
+### Background: Check severl books and websites. Using W. Ttest for population size and different 
+### variances. 
+
+# Split the data between tourist and non tourist. 
+splitdat <- split(july12_census, factor(july12_census$tourist))
+tourist_census <- splitdat$Tourist
+ntourist_census <- splitdat$N.Tourist
+
+# Test for all selected variables
+t.test(ntourist_census$per_cap_income, tourist_census$per_cap_income, var.equal = FALSE)
+t.test(ntourist_census$perc_under_poverty, tourist_census$perc_under_poverty, var.equal = FALSE)
+t.test(ntourist_census$perc_unemployment_rate, tourist_census$perc_unemployment_rate, var.equal = FALSE)
+t.test(ntourist_census$perc_white, tourist_census$perc_white, var.equal = FALSE)
+t.test(ntourist_census$perc_aa, tourist_census$perc_aa, var.equal = FALSE)
+t.test(ntourist_census$perc_hispanic, tourist_census$perc_hispanic, var.equal = FALSE)
+t.test(ntourist_census$perc_other_race, tourist_census$perc_other_race, var.equal = FALSE)
+t.test(ntourist_census$perc_ed_high, tourist_census$perc_ed_high, var.equal = FALSE)
+t.test(ntourist_census$perc_ed_college, tourist_census$perc_ed_college, var.equal = FALSE)
+t.test(ntourist_census$perc_ed_att_col_deg, tourist_census$perc_ed_att_col_deg, var.equal = FALSE)
+t.test(ntourist_census$perc_other_ed, tourist_census$perc_other_ed, var.equal = FALSE)
+t.test(ntourist_census$perc_non_citizen, tourist_census$perc_non_ci

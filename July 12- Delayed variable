@@ -1,0 +1,57 @@
+###########################################################################################
+#### Create the delayed variable in the calls data set ####################################
+###########################################################################################
+### Need these
+# n, percent delayed calls, number delayed calls, delayed calls by total population, mean, 
+# median, sd
+
+# So I changed the delayed variable because the logistic regression output reads the
+# condition as one. Let's redo the function. 
+delayed.time2 <- function(x){
+  #na.omit(x)
+  for(i in 1:length(x)){
+    if(x[i] >= 0){
+      x[i]<- "0"
+    }else{
+      x[i]<- "1"
+    }
+  } 
+  print(x)
+}
+# Test it by creating a vector 
+a<- c(-12, -4, -89, 0, 3, 102)
+delayed.time2(a)
+# Cool so it works
+
+# Run it through the call data (july12_calls)
+july12_calls$delayed <- as.numeric(july12_calls$Goal.Days - july12_calls$Actual.Completed.Days)
+# I kept getting Error in if (x[i] < 0) { : missing value where TRUE/FALSE needed when I tried to 
+# put in the line of code below. With a quick google search it turns out I have NA values in the delayed 
+# column. The code under is how I figured that out. Then I removed it. 
+# This line: july12_calls$bi_delayed <- delayed.time2(july12_calls$delayed)
+sum(is.na(july12_calls$delayed))
+    # [1] 8874
+b <- which(is.na(july12_calls$delayed))
+july12_calls[b , ]$delayed
+
+# Run it again
+july12_calls$delayed <- as.numeric(july12_calls$Goal.Days - july12_calls$Actual.Completed.Days)
+#Remove the Issue.Description because it is all empty
+july12_calls <- july12_calls[, -3]
+# Remove na's
+july12_calls<- na.omit(july12_calls)
+#Run the function again 
+july12_calls$bi_delayed <- delayed.time2(july12_calls$delayed)
+#Good this worked! 
+
+### Need these
+# n, percent delayed calls, number delayed calls, delayed calls by total population, mean, 
+# median, sd
+# to get the amount in each group:
+july12_calls %>% group_by(tourist) %>% summarize(n = n())
+# to get the other statistics:
+july12_calls %>% group_by(tourist) %>% summarize(mean = mean(delayed),
+                                                 perc_delayed_calls= sum((bi_delayed == "1")/n()),
+                                                 min= min(delayed), 
+                                                 max= max(delayed) 
+                                                 )

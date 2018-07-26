@@ -1,0 +1,48 @@
+##########################################################################################
+#### Label the tourist areas on each data set to get the mean values for each area #######
+##########################################################################################
+# I can use the toursit function which I created the first time around. 
+# I'm using the data set that says my_t_tracts. This is just hand labeled tourist tracts 
+# with zeros in it. 
+
+# Use the change.to.tourist function and save the column as tourist
+july12_census$tourist <- change.to.tourist(july12_census$TRACTCE10, my_t_tracts)
+names(july12_census)
+
+# Save to a csv file
+write.csv(july12_census, "july12_census_cleaned.csv")
+
+# Do the same for the call data
+july12_calls$tourist <- change.to.tourist(july12_calls$TRACTCE10 , my_t_tracts)
+names(july12_calls)
+
+# Save to a csv file
+write.csv(july12_calls, "july12_calls_cleaned.csv")
+
+
+### I'm going to keep all the column names for the call data. Also, I'm going to keep outliers
+### that are in the data because this isn't due to a data collection mistake. 
+
+# Separate between tourist and non tourist to get the output for the means
+mean_percents_of_census<- july12_census %>% 
+  group_by(tourist) %>%
+  summarize(per_cap_income = mean(per_cap_income), 
+            perc_unpov = mean(perc_under_poverty),
+            unemploy = mean(perc_unemployment_rate),
+            white = mean(perc_white),
+            black = mean(perc_aa),
+            hispanic = mean(perc_hispanic),
+            other = mean(perc_other_race),
+            highschool = mean(perc_ed_high),
+            college = mean(perc_ed_college),
+            coldegree = mean(perc_ed_att_col_deg),
+            other_ed = mean(perc_other_ed), 
+            non_cit = mean(perc_non_citizen))
+
+print(mean_percents_of_census)
+#tourist   per_cap_income   perc_unpov  unemploy white black hispanic 
+#1 N.Tourist          24701       20.6     8.74  13.7  18.4     65.5 
+#2 Tourist            43293       17.8     8.40  32.6  14.0     49.9  
+#other highschool college coldegree other_ed non_cit
+#2.36       28.9    17.2      9.92      44.0    23.7
+#3.45       19.4    24.7      19.2      36.7    21.4
