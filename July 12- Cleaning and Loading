@@ -1,0 +1,62 @@
+######################################################################################################
+#### These should be our official data sets ###########################################################
+######################################################################################################
+
+### Here is some background because my code was completly lost from when I started this day one. To get the random sample I originally used the 
+### category_census.csv data set H.S. provided. This is ok because both the category and issue type census data have the same exact tracts
+### each has 517. The only difference is that the clusters were different because they were based on category or issue type. However, 
+### this is ok because we are only using the TRACTCE10 col from the data. 
+
+### This data uses:
+# tcc.csv (loaded in the repository)
+### The cleaned data results in these two sets: 
+# july12_census_cleaned.csv
+# july12_calls_cleaned.csv
+
+### Loading in the new census data as of July 12, 2018
+setwd("C:/Users/pietr/OneDrive/Documents/Shadow projects")
+library(readr)
+July12_census <- read_csv("July12_census.csv")
+###
+
+### Grab the tracts using the sampled tracts from the previous run around. Using the first column of 
+### tcc. 
+# Load dplyr
+library(dplyr)
+july12_census <- July12_census %>%
+  filter(TRACTCE10 %in% tracts_census_issue)
+# Hye- Seon must have given me a cleaned data set already
+
+#Save it as a csv file. 
+write.csv(july12_census, "july12_census_cleaned.csv")
+
+# Ok now we need to delete the last row that has incomplete data. This is 3706.
+# I know this from looking in Excel 
+ind <- which(july12_census$TRACTCE10 == "3706")
+
+# Now select everything but that row
+july12_census <- july12_census[-ind, ]
+
+# Save it as a csv... again
+write.csv(july12_census, "july12_census_cleaned")
+
+# Do some checking. 
+boxplot(july12_census$tot_pop, horizontal =T)
+     # There are several outliers
+boxplot(july12_census$med_income, horizontal=T)
+     # Many outliers
+
+### Now we need to grab the associated call data using the data set called issue. The 
+### calls data set has zeros infront of it so we have to add zeros to these tracts.
+# Use the function add.zero
+july12_census$TRACTCE10 <- add.zero(july12_census$TRACTCE10)
+
+#Save the TRACTCE10 col to a vector
+all_cleaned_tracts <- july12_census$TRACTCE10
+
+#Grab them 
+july12_calls <- issue %>% 
+  filter(TRACTCE10 %in% all_cleaned_tracts)
+
+# Save this to a csv file
+write.csv(july12_calls, "july12_calls_cleaned.csv")
