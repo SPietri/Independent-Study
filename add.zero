@@ -1,0 +1,20 @@
+### Sometimes in the data the tracts have zeros and others do not. Inorder to make it easier for me to 
+# grab them I use this function. That way they are all the same. 
+
+function(x){
+  for(i in 1:length(x)){
+    if(nchar(x[i])==3){
+      x[i] <- paste("000",x[i], sep = "")
+    }
+    else if(nchar(x[i])==4){
+      x[i] <- paste("00", x[i], sep = "")
+    }
+    else if(nchar(x[i])==5){
+      x[i]<- paste("0", x[i], sep = "")
+    }
+    else if(nchar(x[i])==6){
+      x[i]<- substr(x[i], 1,nchar(x[i]))
+    }
+  }
+  print(x)
+}
