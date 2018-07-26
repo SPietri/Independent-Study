@@ -1,0 +1,13 @@
+### This labels tracts to tourist or non tourist using characters. 
+
+
+function(x, target){
+  for(i in 1:length(x)){
+    if(x[i] %in% (target)){
+      x[i]<- "Tourist"
+    }else{
+      x[i]<- "N.Tourist"
+    }
+  } 
+  print(x)
+}
