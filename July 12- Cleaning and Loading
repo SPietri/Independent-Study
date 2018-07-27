@@ -60,3 +60,19 @@ july12_calls <- issue %>%
 
 # Save this to a csv file
 write.csv(july12_calls, "july12_calls_cleaned.csv")
+
+### Now we need to grab the associated call data using the data set called issue. The 
+### calls data set has zeros infront of it so we have to add zeros to these tracts.
+# Use the function add.zero
+july12_census$TRACTCE10 <- add.zero(july12_census$TRACTCE10)
+
+#Save the TRACTCE10 col to a vector
+all_cleaned_tracts <- july12_census$TRACTCE10
+
+#Grab them 
+july12_calls <- issue %>% 
+  filter(TRACTCE10 %in% all_cleaned_tracts)
+
+# Save this to a csv file
+write.csv(july12_calls, "july12_calls_cleaned.csv")
+

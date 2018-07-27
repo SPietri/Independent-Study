@@ -1,0 +1,418 @@
+######################################################################################################
+#### This should be our official data sets ###########################################################
+######################################################################################################
+
+### Loading in the new census data as of July 12, 2018
+setwd("C:/Users/pietr/OneDrive/Documents/Shadow projects")
+library(readr)
+July12_census <- read_csv("July12_census.csv")
+###
+
+### Grab the tracts using the sampled tracts from the previous run around. Using the first column of 
+### tcc. 
+# Load dplyr
+library(dplyr)
+july12_census <- July12_census %>%
+  filter(TRACTCE10 %in% tracts_census_issue)
+# Hye- Seon must have given me a cleaned data set already
+
+#Save it as a csv file. 
+write.csv(july12_census, "july12_census_cleaned.csv")
+
+# Ok now we need to delete the last row that has incomplete data. This is 3706.
+# I know this from looking in Excel 
+ind <- which(july12_census$TRACTCE10 == "3706")
+
+# Now select everything but that row
+july12_census <- july12_census[-ind, ]
+
+# Save it as a csv... again
+write.csv(july12_census, "july12_census_cleaned")
+
+# Do some checking. 
+boxplot(july12_census$tot_pop, horizontal =T)
+     # There are several outliers
+boxplot(july12_census$med_income, horizontal=T)
+     # Many outliers
+
+### Now we need to grab the associated call data using the data set called issue. The 
+### calls data set has zeros infront of it so we have to add zeros to these tracts.
+# Use the function add.zero
+july12_census$TRACTCE10 <- add.zero(july12_census$TRACTCE10)
+
+#Save the TRACTCE10 col to a vector
+all_cleaned_tracts <- july12_census$TRACTCE10
+
+#Grab them 
+july12_calls <- issue %>% 
+  filter(TRACTCE10 %in% all_cleaned_tracts)
+
+# Save this to a csv file
+write.csv(july12_calls, "july12_calls_cleaned.csv")
+
+##########################################################################################
+#### Label the tourist areas on each data set to get the mean values for each area #######
+##########################################################################################
+# I can use the toursit function which I created the first time around. 
+# I'm using the data set that says my_t_tracts. This is just hand labeled tourist tracts 
+# with zeros in it. 
+
+# Use the change.to.tourist function and save the column as tourist
+july12_census$tourist <- change.to.tourist(july12_census$TRACTCE10, my_t_tracts)
+names(july12_census)
+
+# Save to a csv file
+write.csv(july12_census, "july12_census_cleaned.csv")
+
+# Do the same for the call data
+july12_calls$tourist <- change.to.tourist(july12_calls$TRACTCE10 , my_t_tracts)
+names(july12_calls)
+
+# Save to a csv file
+write.csv(july12_calls, "july12_calls_cleaned.csv")
+
+
+### I'm going to keep all the column names for the call data. Also, I'm going to keep outliers
+### that are in the data because this isn't due to a data collection mistake. 
+
+# Separate between tourist and non tourist to get the output for the means
+mean_percents_of_census<- july12_census %>% 
+  group_by(tourist) %>%
+  summarize(per_cap_income = mean(per_cap_income), 
+            perc_unpov = mean(perc_under_poverty),
+            unemploy = mean(perc_unemployment_rate),
+            white = mean(perc_white),
+            black = mean(perc_aa),
+            hispanic = mean(perc_hispanic),
+            other = mean(perc_other_race),
+            highschool = mean(perc_ed_high),
+            college = mean(perc_ed_college),
+            coldegree = mean(perc_ed_att_col_deg),
+            other_ed = mean(perc_other_ed), 
+            non_cit = mean(perc_non_citizen))
+
+print(mean_percents_of_census)
+#tourist   per_cap_income   perc_unpov  unemploy white black hispanic 
+#1 N.Tourist          24701       20.6     8.74  13.7  18.4     65.5 
+#2 Tourist            43293       17.8     8.40  32.6  14.0     49.9  
+#other highschool college coldegree other_ed non_cit
+#2.36       28.9    17.2      9.92      44.0    23.7
+#3.45       19.4    24.7      19.2      36.7    21.4
+
+######################################################################################
+#### Do the t tests ##################################################################
+######################################################################################
+### Not checking varience any more because we did it the first time around
+
+# Split the data between tourist and non tourist. 
+splitdat <- split(july12_census, factor(july12_census$tourist))
+tourist_census <- splitdat$Tourist
+ntourist_census <- splitdat$N.Tourist
+
+# Test for all selected variables
+t.test(ntourist_census$per_cap_income, tourist_census$per_cap_income, var.equal = FALSE)
+t.test(ntourist_census$perc_under_poverty, tourist_census$perc_under_poverty, var.equal = FALSE)
+t.test(ntourist_census$perc_unemployment_rate, tourist_census$perc_unemployment_rate, var.equal = FALSE)
+t.test(ntourist_census$perc_white, tourist_census$perc_white, var.equal = FALSE)
+t.test(ntourist_census$perc_aa, tourist_census$perc_aa, var.equal = FALSE)
+t.test(ntourist_census$perc_hispanic, tourist_census$perc_hispanic, var.equal = FALSE)
+t.test(ntourist_census$perc_other_race, tourist_census$perc_other_race, var.equal = FALSE)
+t.test(ntourist_census$perc_ed_high, tourist_census$perc_ed_high, var.equal = FALSE)
+t.test(ntourist_census$perc_ed_college, tourist_census$perc_ed_college, var.equal = FALSE)
+t.test(ntourist_census$perc_ed_att_col_deg, tourist_census$perc_ed_att_col_deg, var.equal = FALSE)
+t.test(ntourist_census$perc_other_ed, tourist_census$perc_other_ed, var.equal = FALSE)
+t.test(ntourist_census$perc_non_citizen, tourist_census$perc_non_citizen, var.equal = FALSE)
+
+###########################################################################################
+#### Create the delayed variable in the calls data set ####################################
+###########################################################################################
+### Need these
+# n, percent delayed calls, number delayed calls, delayed calls by total population, mean, 
+# median, sd
+
+# So I changed the delayed variable because the logistic regression output reads the
+# condition as one. Let's redo the function. 
+delayed.time2 <- function(x){
+  #na.omit(x)
+  for(i in 1:length(x)){
+    if(x[i] >= 0){
+      x[i]<- "0"
+    }else{
+      x[i]<- "1"
+    }
+  } 
+  print(x)
+}
+# Test it by creating a vector 
+a<- c(-12, -4, -89, 0, 3, 102)
+delayed.time2(a)
+# Cool so it works
+
+# Run it through the call data (july12_calls)
+july12_calls$delayed <- as.numeric(july12_calls$Goal.Days - july12_calls$Actual.Completed.Days)
+# I kept getting Error in if (x[i] < 0) { : missing value where TRUE/FALSE needed when I tried to 
+# put in the line of code below. With a quick google search it turns out I have NA values in the delayed 
+# column. The code under is how I figured that out. Then I removed it. 
+# This line: july12_calls$bi_delayed <- delayed.time2(july12_calls$delayed)
+sum(is.na(july12_calls$delayed))
+    # [1] 8874
+b <- which(is.na(july12_calls$delayed))
+july12_calls[b , ]$delayed
+
+# Run it again
+july12_calls$delayed <- as.numeric(july12_calls$Goal.Days - july12_calls$Actual.Completed.Days)
+#Remove the Issue.Description because it is all empty
+july12_calls <- july12_calls[, -3]
+# Remove na's
+july12_calls<- na.omit(july12_calls)
+#Run the function again 
+july12_calls$bi_delayed <- delayed.time2(july12_calls$delayed)
+#Good this worked! 
+
+### Need these
+# n, percent delayed calls, number delayed calls, delayed calls by total population, mean, 
+# median, sd
+# to get the amount in each group:
+july12_calls %>% group_by(tourist) %>% summarize(n = n())
+# to get the other statistics:
+july12_calls %>% group_by(tourist) %>% summarize(mean = mean(delayed),
+                                                 perc_delayed_calls= sum((bi_delayed == "1")/n()),
+                                                 min= min(delayed), 
+                                                 max= max(delayed) 
+                                                 )
+
+##############################################################################################
+### Running the OLS regression model #########################################################
+##############################################################################################
+# The OLS regression will be the number of calls per tract explained by demographic variables 
+# and whether of not it is a tourist area or not...
+number_per_tract <- july12_calls %>% group_by(TRACTCE10) %>%
+  summarize(number_per_tract = n())
+
+# Merge this column with the census data
+july12_census<- merge(july12_census, number_per_tract,  by = "TRACTCE10")
+summary(july12_census)
+
+### Choosing to remove outlier or not? Not going to remove outliers because this isn't a mistake in the
+### data. Also high income could be important characteristic to understand about tourist areas if 
+### that is what the data shows. 
+
+# Since med income is so much larger than the rest of the variables being added to the regression
+# model we have to normalize it or transform it. Let's take a look: 
+# 
+hist(log(july12_census$med_income))
+hist(sqrt(july12_census$med_income))
+hist((july12_census$med_income))
+
+#Anderson Darling test
+med <- log(july12_census$med_income)
+ad.test(med)
+#Anderson-Darling normality test
+
+#data:  med
+#A = 0.35792, p-value = 0.451
+
+#Turn tourist into a binary variable: 
+#Create function for binary tourist
+binary.tourist <- function(x){
+  for(i in 1:length(x)){
+    if(x[i] == "Tourist"){
+      x[i]<- "1"
+    }else{
+      x[i]<- "0"
+    }
+  } 
+  print(x)
+}
+july12_census$bi_tourist <- binary.tourist(july12_census$tourist)
+july12_census$log_med_income <- log(july12_census$med_income)
+
+# Now run the ols model
+attach(july12_census)
+lin.mod1 <- lm(number_per_tract.x ~ log_med_income+ perc_under_poverty + perc_unemployment_rate +
+                 perc_white + perc_hispanic + perc_ed_college + perc_non_citizen+ bi_tourist)
+summary(lin.mod1)
+#Call:
+#  lm(formula = number_per_tract.x ~ log_med_income + perc_under_poverty + 
+#       perc_unemployment_rate + perc_white + perc_hispanic + perc_ed_college + 
+#       perc_non_citizen + bi_tourist)
+
+#Residuals:
+#  Min      1Q  Median      3Q     Max 
+#-1436.5  -584.8  -221.1   342.8  4415.2 
+
+#Coefficients:
+#                        Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)            -3809.292   2898.022  -1.314  0.18993    
+#log_med_income           580.171    260.904   2.224  0.02709 *  
+#perc_under_poverty         6.123     10.045   0.610  0.54272    
+#perc_unemployment_rate    26.079     19.053   1.369  0.17234    
+#perc_white               -16.666      6.681  -2.494  0.01328 *  
+#perc_hispanic              3.643      3.612   1.009  0.31414    
+#perc_ed_college          -34.523     11.994  -2.878  0.00435 ** 
+#perc_non_citizen         -39.248      8.214  -4.778 3.05e-06 ***
+#bi_tourist1             -148.108    222.970  -0.664  0.50716    
+#---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#Residual standard error: 1003 on 244 degrees of freedom
+#Multiple R-squared:  0.2968,	Adjusted R-squared:  0.2738 
+#F-statistic: 12.88 on 8 and 244 DF,  p-value: 1.928e-15
+
+# Doing diagnostics
+#Functional form plot for homoskedasticity. It appears as a funnel
+plot(y=lin.mod1$residuals, x=lin.mod1$fitted.values, xlab = "Fitted Values")
+qqnorm(lin.mod1$residuals)
+qqline(lin.mod1$residuals)
+#Scale location plot for homoskedasticity. It shows a pattern so non normal
+plot(y=sqrt(lin.mod1$residuals), x=lin.mod1$fitted.values, xlab = "Fitted Values")
+
+#########################################################################################
+### Running the Logistic Regression #####################################################
+#########################################################################################
+head(july12_calls$bi_delayed)
+
+# Add the binary tourist 
+july12_calls$bi_tourist <- binary.tourist(july12_calls$tourist)
+
+# Select census variables
+census_for_comb <- july12_census %>% select(TRACTCE10, med_income, perc_under_poverty, 
+                                            perc_unemployment_rate, perc_white, perc_hispanic,
+                                            perc_ed_college, perc_non_citizen, log_med_income)
+comb_data<- left_join(july12_calls, census_for_comb, by="TRACTCE10")
+glimpse(comb_data)
+comb_data$bi_delayed <- factor(as.numeric(comb_data$bi_delayed))
+factor(comb_data$bi_tourist)
+
+# Run the regression model
+attach(comb_data)
+logit1<- glm(bi_delayed ~ bi_tourist +log_med_income+ perc_under_poverty+
+    perc_unemployment_rate+ perc_white+ perc_hispanic+ perc_ed_college+ perc_non_citizen, 
+    family = binomial(link = "logit"))
+summary(logit1)
+
+#Call:
+#  glm(formula = bi_delayed ~ bi_tourist + log_med_income + perc_under_poverty + 
+#        perc_unemployment_rate + perc_white + perc_hispanic + perc_ed_college + 
+#        perc_non_citizen, family = binomial(link = "logit"))
+
+#Deviance Residuals: 
+#  Min       1Q   Median       3Q      Max  
+#-0.7781  -0.6365  -0.6006  -0.5569   2.0269  
+
+#Coefficients:
+#                         Estimate Std. Error z value Pr(>|z|)    
+#(Intercept)             0.1825616  0.2612221   0.699 0.484630    
+#bi_tourist1             0.2331663  0.0219371  10.629  < 2e-16 ***
+#log_med_income         -0.1532221  0.0233672  -6.557 5.48e-11 ***
+#perc_under_poverty     -0.0007717  0.0007991  -0.966 0.334239    
+#perc_unemployment_rate -0.0016992  0.0015381  -1.105 0.269287    
+#perc_white             -0.0000891  0.0006691  -0.133 0.894067    
+#perc_hispanic          -0.0052222  0.0002840 -18.391  < 2e-16 ***
+#perc_ed_college         0.0039372  0.0010835   3.634 0.000279 ***
+#perc_non_citizen        0.0080466  0.0007272  11.065  < 2e-16 ***
+  #---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#(Dispersion parameter for binomial family taken to be 1)
+
+#Null deviance: 270227  on 293814  degrees of freedom
+#Residual deviance: 269262  on 293806  degrees of freedom
+#AIC: 269280
+
+#Number of Fisher Scoring iterations: 4
+
+# From zero to one of tourist increases the logs odd ration of the call being delayed. Log odds raatio of being delayed is...
+log(0.1825616 +0.2331663 - 0.1532221 - 0.0007717 - 0.0016992 - 0.0000891 - 0.0052222 + 0.0039372 + 0.0080466)
+#[1] -1.321603
+exp(0.1825616 +0.2331663 - 0.1532221 - 0.0007717 - 0.0016992 - 0.0000891 - 0.0052222 + 0.0039372 + 0.0080466)
+#[1] 1.305658
+
+# Interpret tourist in logs odd 65%
+
+# pseudo R^2 can be seen below. It is not too close to one. This would indicate the model 
+# does not explain the data very well. 
+1- (270227 - 269262)/270227
+#[1]  0.9964289 
+
+1- with(logit1, deviance/null.deviance)
+
+# Odds ratios 
+exp(logit1$coefficients[-1])
+#bi_tourist1         log_med_income     perc_under_poverty perc_unemployment_rate 
+#1.2625915              0.8579392              0.9992286              0.9983023 
+#perc_white          perc_hispanic        perc_ed_college       perc_non_citizen 
+#0.9999109              0.9947914              1.0039450              1.0080791 
+
+# log-liklihood ratio statistic. Small T value indicates this isn't necessarily better than
+# the null model. 
+270227-269262
+    #[1] 965
+
+# Doing an ROC curve which is a plot of the tru positive rate against the false positive 
+# rate. 
+pred <- predict(logit1, type="response")
+predObj <- prediction(pred, comb_data$bi_delayed)
+rocObj <- performance(predObj, measure = "tpr", x.measure ="fpr")
+acuObj <- performance(predObj, measure="auc")
+plot(rocObj, main = paste("Area under the curve:", round(acuObj @y.values[[1]], 4)))
+# Model only slightly above average almost random. Stay in upper left hand (most restrictive)
+# Predicting delayed var, high trus but low false. 
+
+# Bias in deadlines. Per category/ may have dif deadlines. Invest calls
+# that could be predicted. Should we include other variables. 
+
+# Logistic Columbia
+# We are interesting in determing the probability of a call being delayed based on the demographic
+# variables of the tract the call comes from. 
+logit1
+   #the formula is logit(pi-i) = 0.18 + 0.23*bi_tour...
+# We test the fit of the model through the liklihood ratio test. So it compares
+# the null model(with no explanatory variables) to the model with
+# explanatory variables.
+attach(comb_data)
+#This makes an model with just the variable we want to test
+logit1.reduced <- glm(bi_delayed ~1, family = binomial)
+#this compares the two models one with explan vars and one with just the intercept
+anova(logit1.reduced, logit1, test = "Chisq")
+#Analysis of Deviance Table
+
+#Model 1: bi_delayed ~ 1
+#Model 2: bi_delayed ~ bi_tourist + log_med_income + perc_under_poverty + 
+#  perc_unemployment_rate + perc_white + perc_hispanic + perc_ed_college + 
+#  perc_non_citizen
+#Resid. Df Resid. Dev Df Deviance  Pr(>Chi)    
+#1    293814     270227                          
+#2    293806     269262  8   965.05 < 2.2e-16 ***
+ # ---
+  #Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+#So from the results above the liklihood ratio test statistic is 965.05 and
+# the pvalue is 2.2e-16. Since the p-vale is small there is strong evidence 
+# in favor of regecting the null. The variables improve the model. 
+# https://stats.stackexchange.com/questions/59879/logistic-regression-anova-chi-square-test-vs-significance-of-coefficients-ano 
+
+# Compare on individual regression parameters 
+summary(logit1)
+# will look at perc_non_citizen its p value is 2e-16 
+exp(coef(logit1))
+#perc_non_citizen 
+#1.0080791 
+
+exp(confint.default(logit1))
+#perc_non_citizen       1.0066432 1.0095170
+# the odds ratio falls in the confidence interval. This implies if we fix the 
+# other variables, increasing perc_non_citizen 
+# by 1 unit will increase the odds the call is delayed by .008 (from the summary)
+
+#####################################################################################
+hist(july12_census$perc_white)
+hist(july12_census$perc_under_poverty)
+hist(july12_census$perc_hispanic)
+
+# summary tools pack
+b <-dfSummary(july12_census)
+view(b)
+
+
+
+
