@@ -1,0 +1,71 @@
+#####################################################################################
+### Doing logistic regression on the individual issue types #################################
+#####################################################################################
+# summary tools pack
+b <-dfSummary(july12_census)
+view(b)
+
+# Filter for the issue we want 
+head(comb_data$Case.Owner)
+library(dplyr)
+animal_services_comb <- comb_data %>%
+  filter(Case.Owner == "Animal_Services")
+
+# Ok the above left us with 111,372 observations. Let's run the logistic
+# regression on just this category/case owner
+attach(animal_services_comb)
+logit2<- glm(bi_delayed ~ bi_tourist +log_med_income+ perc_under_poverty+
+               perc_unemployment_rate+ perc_white+ perc_hispanic+ perc_ed_college+ perc_non_citizen, 
+             family = binomial(link = "logit"))
+summary(logit2)
+
+# I'm going to rinse and repeat for the next categories
+eco_services_comb <- comb_data %>%
+     filter(Case.Owner == "Regulatory_and_Economic_Resources")
+attach(eco_services_comb)
+logit3<- glm(bi_delayed ~ bi_tourist +log_med_income+ perc_under_poverty+
+               perc_unemployment_rate+ perc_white+ perc_hispanic+ perc_ed_college+ perc_non_citizen, 
+             family = binomial(link = "logit"))
+summary(logit3)
+
+# For public works 
+road_services_comb <- comb_data %>%
+     filter(Case.Owner == "Public_Works_Road_And_Bridges_16_60")
+attach(road_services_comb)
+logit4<- glm(bi_delayed ~ bi_tourist +log_med_income+ perc_under_poverty+
+               perc_unemployment_rate+ perc_white+ perc_hispanic+ perc_ed_college+ perc_non_citizen, 
+             family = binomial(link = "logit"))
+summary(logit4)
+
+### Perhaps we can filter by a singular issue type instead?? 
+###########################################################################
+### Log reg on delayed for method received ################################
+###########################################################################
+### Ok so I want to try using the method explaining delayed. Ok. There are two 
+### ways I see doing this. Instead of filtering per category go by the method received
+### OR we filter by category and add the factor variable of method received.
+### Filter the entire data set by the top 5 methods: phone, XTERFACE, XTERNEAT
+### INHOUSE, EMAIL 
+
+# Try 1: Filtering for the top 5
+head(comb_data$Method.Received)
+methods <- c("PHONE", "XTERFACE", "XTERNEAT", "INHOUSE", "EMAIL")
+comb_data2 <- comb_data %>% filter(Method.Received %in% methods)
+animal_services_comb2 <- comb_data2 %>% 
+  filter(Case.Owner == "Animal_Services")
+
+attach(animal_services_comb2)
+logit5<- glm(bi_delayed ~ bi_tourist +log_med_income+ perc_under_poverty+
+               perc_unemployment_rate+ perc_white+ perc_hispanic+ perc_ed_college+ perc_non_citizen +Method.Received, 
+             family = binomial(link = "logit"))
+summary(logit5)
+
+#Economic services
+eco_services_comb2 <- comb_data2 %>% 
+  filter(Case.Owner == "Regulatory_and_Economic_Resources")
+
+attach(eco_services_comb2)
+logit6<- glm(bi_delayed ~ bi_tourist +log_med_income+ perc_under_poverty+
+               perc_unemployment_rate+ perc_white+ perc_hispanic+ perc_ed_college+ perc_non_citizen +Method.Received, 
+             family = binomial(link = "logit"))
+summary(logit6)
