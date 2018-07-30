@@ -1,0 +1,47 @@
+#############################################################################
+### Running diagnostics on New log reg models based on category #############
+#############################################################################
+### July 30th :)
+### The goal of today is to run some diagnostic tests on the new logistic regression
+### models that I ran last week based on category instead of the whole data set. 
+
+### The code below will use logit 2 and logit 4. 
+
+# Lets check out the pseudo R^2. This is 1- residual dev/ null dev [EMC, 183]. This
+# is from animal services. 
+summary(logit2)
+1- (113800/115312)
+#[1] 0.01311225 
+# So this is closer to one but not where it should be. 
+
+# Moving to odds ratio: 
+exp(logit2$coefficients[-1])
+#bi_tourist1         log_med_income     perc_under_poverty perc_unemployment_rate 
+#1.1735763              1.0129081              1.0020934              1.0099689 
+#perc_white          perc_hispanic        perc_ed_college       perc_non_citizen 
+#0.9958154              0.9921764              0.9924176              1.0076549 
+
+# Doing the ROC curve
+pred <- predict(logit2, type="response")
+predObj <- prediction(pred, animal_services_comb$bi_delayed)
+rocObj <- performance(predObj, measure = "tpr", x.measure ="fpr")
+acuObj <- performance(predObj, measure="auc")
+plot(rocObj, main = paste("Area under the curve:", round(acuObj @y.values[[1]], 4)))
+# Same results just barely above chance looking for at least .65
+
+# Now the one for road services 
+# Skipping straight to the roc curve
+pred <- predict(logit4, type="response")
+predObj <- prediction(pred, road_services_comb$bi_delayed)
+rocObj <- performance(predObj, measure = "tpr", x.measure ="fpr")
+acuObj <- performance(predObj, measure="auc")
+plot(rocObj, main = paste("Area under the curve:", round(acuObj @y.values[[1]], 4)))
+# Even worse... @Area under the curve being .5733
+
+# Road services pseudo r^2 
+summary(logit4)
+1- (37385/37725)
+#[1] 0.009012591 
+# Not close to one and not a good explanation of the data 
+
+
