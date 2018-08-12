@@ -40,9 +40,9 @@ census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
 # PE vs E don't have to specify it 
 # median income = DP03_0092E | median earnings
 # mean income = DP03_0065E | mean earnings
-# land area = ------------------------
-# water area = -----------------------
-# population = --------
+# land area = ------------------------see google doc
+# water area = -----------------------see google doc
+# population = -------- see google doc ?? 
 # % female = DP05_0003PE
 # % male = DP05_0002PE 
 # % african american = DP05_0073PE
@@ -157,3 +157,11 @@ names(censusdata)
 censusdata <- rename(censusdata, col_names)
 View(censusdata)
 
+# Need to select the last 6 numbers in  the tract column
+censusdata <- censusdata %>% mutate(tract = substr(tract, start = 6, stop = 11))
+View(censusdata)
+censusdata <- censusdata[ , -2]
+
+#Save as csv
+setwd("C:/Users/pietr/OneDrive/Documents/Shadow projects")
+write.csv(censusdata, "censusdata.csv")
