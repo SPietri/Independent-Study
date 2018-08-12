@@ -1,0 +1,166 @@
+##########################################################################################
+### Trying to grab api census ############################################################
+##########################################################################################
+# August 11, 2018: 
+# Ok new task is to grab the api data directly and pull new variables like landmass and 
+# water access. These two variables have appeared in several other reports/works and we feel
+# that perhaps adding these two elemnts could up the accuracy of our regression models. Using 
+# T. Keller's script. 
+
+# The first task is to disect the script. Once I do this I should be more comfortable 
+# grabbing the data. I also beleive the process is a long one so this should be interesting. 
+# He is using tidy census because censusapi is "down". 
+install.packages("tidycensus")
+library(tidycensus)
+library(tidyverse)
+# - these are just the packages...
+
+# Im not sure if i can use the same key Thomas did so I just requested one from the website and
+# put in my email. Took under 2 minutes. To get the api key just do on the website. 
+# Then activate your key in the link. 
+# my key: fb054896797b80e2bf77f1bab8b8fac0e4820c25 
+census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
+
+# My api data is coming from the American Community Survey (ACS) and 2010 census. The function below allows for
+# easy query of that. You put in the state, the variables, and the year. This package is 
+# pretty cool and easy to use. Here is the website: 
+# https://walkerke.github.io/tidycensus/articles/basic-usage.html. The next thing I want 
+# to do is make sure I know what variables I want because the names are not so straight 
+# foward. I am selecting the data profile option. According to the website this is just 
+# "broad" statistics and information about the area. I'm sure I can just select the variable
+# and then add it to what we already have but for practice I'm going to do the entire thing! 
+
+# The website below is a list of all census definitions: 
+# https://www2.census.gov/programs-surveys/acs/tech_docs/subject_definitions/2016_ACSSubjectDefinitions.pdf
+# To search for the varaibles we need, I can use this: 
+# https://api.census.gov/data/2016/acs/acs1/profile/variables.html 
+# Here is the list of variables we need: 
+# PE ending means percent
+# median income = DP03_0092E | median earnings
+# mean income = DP03_0065E | mean earnings
+# land area = ------------------------see google doc
+# water area = -----------------------see google doc
+# population = -------- see google doc ?? 
+# % female = DP05_0003PE
+# % male = DP05_0002PE 
+# % african american = DP05_0073PE
+# asian = DP05_0075PE
+# american indian/native = DP05_0074PE
+# latino = DP05_0066PE
+# white = DP05_0072PE
+# other race = DP05_0077PE
+# house w/ children = DP02_0020PE (didn't choose this one)
+  # OR- DP02_0003PE | Percent!!HOUSEHOLDS BY TYPE!!Total households!!Family households (families)!!With own children of the householder under 18 years
+# occupied housing units = DP04_0045PE 
+# rented units = DP04_0049PE 
+# urban area or rural = UA
+# % foreign born = DP02_0093PE
+# % naturalized = DP02_0094PE
+# % non citizen = DP02_0095PE Percent!!U.S. CITIZENSHIP STATUS!!Foreign-born population!!Not a U.S. citizen
+#### type of requests from who and by what
+# associate degree = DP02_0063PE 
+# highschool diploma/ equivalency = DP02_0061PE 
+# some college = DP02_0062PE
+# bachelors degree = DP02_0064PE
+# advanced degree = DP02_0065PE 
+# internet use = DP02_0150PE 
+# % 15-19 = DP05_0007PE
+# % 20- 24 = DP05_0008PE 
+# % 65 years or older = DP05_0021PE 
+# % poverty= DP03_0128PE 
+# unemployment rate = DP03_0009PE 
+# per capita income = DP03_0088E 
+# total population = DP02_0086PE 
+
+# So let's do it...but I think the land and water variables will require a different census
+# file. Create a variable that can have all the names of the variables together
+library(dplyr)
+# These are the variables by NAME on the census
+acs_var <- c("DP03_0092E", "DP03_0065E","DP05_0003PE", "DP05_0002PE","DP05_0073PE","DP05_0075PE","DP05_0074PE",
+             "DP05_0072PE","DP05_0066PE","DP05_0077PE","DP02_0003PE","DP04_0045PE","DP04_0047PE", 
+             "DP02_0093PE","DP02_0094PE","DP02_0095PE","DP02_0063PE","DP02_0061PE", "DP02_0064PE",
+             "DP02_0065PE","DP02_0062PE","DP05_0007PE","DP05_0008PE","DP05_0021PE",
+             "DP03_0128PE","DP03_0009PE","DP03_0088E","DP02_0086PE")
+
+col_names <- c("DP03_0092E" = "med_income",
+               "DP03_0065E" = "mean_income",
+               "DP05_0003PE" = "perc_female",
+               "DP05_0002PE"= "perc_male",
+               "DP05_0073PE" = "perc_black",
+               "DP05_0075PE"= "perc_asian",  
+               "DP05_0074PE"= "perc_native",
+               "DP05_0072PE" = "perc_white",
+               "DP05_0066PE" = "perc_latino",
+               "DP05_0077PE"= "perc_other",
+               "DP02_0003PE" = "house_with_child", 
+               "DP04_0045PE" = "occupied_house",
+               "DP04_0047PE" = "renter",   
+               "DP02_0093PE" = "foreign", 
+               "DP02_0094PE" = "naturalized", 
+               "DP02_0095PE" = "non_citizen",
+               "DP02_0063PE" = "associate", 
+               "DP02_0061PE" = "highschool",
+               "DP02_0064PE" = "bachelor",
+               "DP02_0065PE" = "graduate",
+               "DP02_0062PE" = "some_college",
+               "DP05_0007PE" = "year_15_to_19",
+               "DP05_0008PE" = "year_20_to_24", 
+               "DP05_0021PE" = "year_65_up",
+               "DP03_0128PE" = "perc_under_poverty",
+               "DP03_0009PE" = "unemployment_rate",
+               "DP03_0088E" = "per_cap_income",
+               "DP02_0086PE" = "tot_pop",
+               "land_area" = "land_area",
+               "water_area" = "water_area",
+               "GEOID" = "tract",
+               "NAME.x"= "county")
+               
+
+select_variable_sf1 <- c(land_area = "AREALAND",
+                           water_area = "AREAWATR")
+
+# Now we need to select the variables from the census file. 
+# Kept having issues https://github.com/walkerke/tidycensus/issues/35 
+fl_acs <- get_acs(geography = "tract",
+                  variables = acs_var, 
+                  state = "FL",
+                  year = 2016, 
+                  output = "wide")
+head(fl_acs)
+View(fl_acs)
+# Filter for Miami-Dade County
+fl <- fl_acs %>% select(GEOID, NAME, acs_var) %>% filter(grepl("Miami-Dade", NAME))
+head(fl)
+View(fl)
+#Ok so from the previous work I know that the number of tracts is 519 so this is good. 
+
+# Now get the land and water area
+fl_sf1<- get_decennial(geography = "tract", 
+                       state = "FL", 
+                       county = "Miami-Dade",
+                       variables = select_variable_sf1 , 
+                       year = 2010,
+                       output= "wide")
+
+# Combine the two sets 
+head(fl_sf1)
+head(fl)
+censusdata <- left_join(fl_sf1, fl, by = "GEOID")
+View(censusdata)
+
+# rename the columns + clean up
+library(plyr)
+library(data.table)
+censusdata <- censusdata[, -5]
+names(censusdata)
+censusdata <- rename(censusdata, col_names)
+View(censusdata)
+
+# Need to select the last 6 numbers in  the tract column
+censusdata <- censusdata %>% mutate(tract = substr(tract, start = 6, stop = 11))
+View(censusdata)
+censusdata <- censusdata[ , -2]
+
+#Save as csv
+setwd("C:/Users/pietr/OneDrive/Documents/Shadow projects")
+write.csv(censusdata, "censusdata.csv")
