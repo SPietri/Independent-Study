@@ -7,7 +7,7 @@
 # that perhaps adding these two elemnts could up the accuracy of our regression models. Using 
 # T. Keller's script. 
 
-# The first task is to disect Thomas's script. Once I do this I should be more comfortable 
+# The first task is to disect the script. Once I do this I should be more comfortable 
 # grabbing the data. I also beleive the process is a long one so this should be interesting. 
 # He is using tidy census because censusapi is "down". 
 install.packages("tidycensus")
@@ -21,8 +21,8 @@ library(tidyverse)
 # my key: fb054896797b80e2bf77f1bab8b8fac0e4820c25 
 census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
 
-# My api data is coming from the American Community Survey (ACS). The function below allows for
-# easy query of that. You fut in the state, the variables, and the year. This package is 
+# My api data is coming from the American Community Survey (ACS) and 2010 census. The function below allows for
+# easy query of that. You put in the state, the variables, and the year. This package is 
 # pretty cool and easy to use. Here is the website: 
 # https://walkerke.github.io/tidycensus/articles/basic-usage.html. The next thing I want 
 # to do is make sure I know what variables I want because the names are not so straight 
@@ -33,11 +33,9 @@ census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
 # The website below is a list of all census definitions: 
 # https://www2.census.gov/programs-surveys/acs/tech_docs/subject_definitions/2016_ACSSubjectDefinitions.pdf
 # To search for the varaibles we need, I can use this: 
-#v16 <- load_variables(2016, "sf1", cache = TRUE)
-#View(v16)
-# Here is the list of variables we need: 
 # https://api.census.gov/data/2016/acs/acs1/profile/variables.html 
-# PE vs E don't have to specify it 
+# Here is the list of variables we need: 
+# PE ending means percent
 # median income = DP03_0092E | median earnings
 # mean income = DP03_0065E | mean earnings
 # land area = ------------------------see google doc
@@ -51,7 +49,7 @@ census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
 # latino = DP05_0066PE
 # white = DP05_0072PE
 # other race = DP05_0077PE
-# house w/ children = DP02_0020PE
+# house w/ children = DP02_0020PE (didn't choose this one)
   # OR- DP02_0003PE | Percent!!HOUSEHOLDS BY TYPE!!Total households!!Family households (families)!!With own children of the householder under 18 years
 # occupied housing units = DP04_0045PE 
 # rented units = DP04_0049PE 
@@ -77,6 +75,7 @@ census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
 # So let's do it...but I think the land and water variables will require a different census
 # file. Create a variable that can have all the names of the variables together
 library(dplyr)
+# These are the variables by NAME on the census
 acs_var <- c("DP03_0092E", "DP03_0065E","DP05_0003PE", "DP05_0002PE","DP05_0073PE","DP05_0075PE","DP05_0074PE",
              "DP05_0072PE","DP05_0066PE","DP05_0077PE","DP02_0003PE","DP04_0045PE","DP04_0047PE", 
              "DP02_0093PE","DP02_0094PE","DP02_0095PE","DP02_0063PE","DP02_0061PE", "DP02_0064PE",
