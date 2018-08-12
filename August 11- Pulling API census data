@@ -76,48 +76,66 @@ census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
 
 # So let's do it...but I think the land and water variables will require a different census
 # file. Create a variable that can have all the names of the variables together
-select_variables_acs <- c(med_income = "DP03_0092E", 
-                      mean_income = "DP03_0065E",
-                      perc_female = "DP05_0003PE", 
-                      perc_male = "DP05_0002PE",
-                      perc_black = "DP05_0073PE",
-                      perc_asian = "DP05_0075PE",
-                      perc_native = "DP05_0074PE",
-                      perc_white = "DP05_0072PE",
-                      perc_latino = "DP05_0066PE",
-                      perc_other = "DP05_0077PE",
-                      house_with_child = "DP02_0003PE",
-                      occupied_house = "DP04_0045PE",
-                      renter = "DP04_0049PE", 
-                      urban_area = "UA",
-                      foreign = "DP02_0093PE",
-                      naturalized = "DP02_0094PE",
-                      non_citizen = "DP02_0095PE",
-                      associate = "DP02_0063PE",
-                      highschool = "DP02_0061PE",
-                      bachelor = "DP02_0064PE",
-                      graduate = "DP02_0065PE",
-                      some_college = "DP02_0062PE",
-                      comp_internet = "DP02_0150PE",
-                      year_15_to_19 = "DP05_0007PE",
-                      year_20_to_24 = "DP05_0008PE",
-                      year_65_up = "DP05_0021PE",
-                      perc_under_poverty = "DP03_0128PE",
-                      unemployment_rate = "DP03_0009PE",
-                      per_cap_income = "DP03_0088E",
-                      tot_pop = "DP02_0086PE")
+library(dplyr)
+acs_var <- c("DP03_0092E", "DP03_0065E","DP05_0003PE", "DP05_0002PE","DP05_0073PE","DP05_0075PE","DP05_0074PE",
+             "DP05_0072PE","DP05_0066PE","DP05_0077PE","DP02_0003PE","DP04_0045PE","DP04_0047PE", 
+             "DP02_0093PE","DP02_0094PE","DP02_0095PE","DP02_0063PE","DP02_0061PE", "DP02_0064PE",
+             "DP02_0065PE","DP02_0062PE","DP05_0007PE","DP05_0008PE","DP05_0021PE",
+             "DP03_0128PE","DP03_0009PE","DP03_0088E","DP02_0086PE")
+
+col_names <- c("DP03_0092E" = "med_income",
+               "DP03_0065E" = "mean_income",
+               "DP05_0003PE" = "perc_female",
+               "DP05_0002PE"= "perc_male",
+               "DP05_0073PE" = "perc_black",
+               "DP05_0075PE"= "perc_asian",  
+               "DP05_0074PE"= "perc_native",
+               "DP05_0072PE" = "perc_white",
+               "DP05_0066PE" = "perc_latino",
+               "DP05_0077PE"= "perc_other",
+               "DP02_0003PE" = "house_with_child", 
+               "DP04_0045PE" = "occupied_house",
+               "DP04_0047PE" = "renter",   
+               "DP02_0093PE" = "foreign", 
+               "DP02_0094PE" = "naturalized", 
+               "DP02_0095PE" = "non_citizen",
+               "DP02_0063PE" = "associate", 
+               "DP02_0061PE" = "highschool",
+               "DP02_0064PE" = "bachelor",
+               "DP02_0065PE" = "graduate",
+               "DP02_0062PE" = "some_college",
+               "DP05_0007PE" = "year_15_to_19",
+               "DP05_0008PE" = "year_20_to_24", 
+               "DP05_0021PE" = "year_65_up",
+               "DP03_0128PE" = "perc_under_poverty",
+               "DP03_0009PE" = "unemployment_rate",
+               "DP03_0088E" = "per_cap_income",
+               "DP02_0086PE" = "tot_pop",
+               "land_area" = "land_area",
+               "water_area" = "water_area",
+               "GEOID" = "tract",
+               "NAME.x"= "county")
+               
 
 select_variable_sf1 <- c(land_area = "AREALAND",
                            water_area = "AREAWATR")
 
 # Now we need to select the variables from the census file. 
 # Kept having issues https://github.com/walkerke/tidycensus/issues/35 
-fl_acs <- get_acs(geography= "tract", 
-                  state ="FL", 
-                  county = "Miami-Dade",
-                  variables = select_variables_acs, 
-                  output= "wide")
+fl_acs <- get_acs(geography = "tract",
+                  variables = acs_var, 
+                  state = "FL",
+                  year = 2016, 
+                  output = "wide")
+head(fl_acs)
+View(fl_acs)
+# Filter for Miami-Dade County
+fl <- fl_acs %>% select(GEOID, NAME, acs_var) %>% filter(grepl("Miami-Dade", NAME))
+head(fl)
+View(fl)
+#Ok so from the previous work I know that the number of tracts is 519 so this is good. 
 
+# Now get the land and water area
 fl_sf1<- get_decennial(geography = "tract", 
                        state = "FL", 
                        county = "Miami-Dade",
@@ -125,7 +143,17 @@ fl_sf1<- get_decennial(geography = "tract",
                        year = 2010,
                        output= "wide")
 
+# Combine the two sets 
+head(fl_sf1)
+head(fl)
+censusdata <- left_join(fl_sf1, fl, by = "GEOID")
+View(censusdata)
 
-
-
+# rename the columns + clean up
+library(plyr)
+library(data.table)
+censusdata <- censusdata[, -5]
+names(censusdata)
+censusdata <- rename(censusdata, col_names)
+View(censusdata)
 
