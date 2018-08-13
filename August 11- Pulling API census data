@@ -18,8 +18,8 @@ library(tidyverse)
 # Im not sure if i can use the same key Thomas did so I just requested one from the website and
 # put in my email. Took under 2 minutes. To get the api key just do on the website. 
 # Then activate your key in the link. 
-# my key: fb054896797b80e2bf77f1bab8b8fac0e4820c25 
-census_api_key("fb054896797b80e2bf77f1bab8b8fac0e4820c25")
+# my key:  
+census_api_key("mycensuskey")
 
 # My api data is coming from the American Community Survey (ACS) and 2010 census. The function below allows for
 # easy query of that. You put in the state, the variables, and the year. This package is 
