@@ -1,0 +1,27 @@
+#############################################################################################################
+### Re-trying the OLS regression model using dependent variable as number of calls/total population #########
+#############################################################################################################
+# Add the variable
+aug_census_comb <- aug_census_comb %>% mutate(ncp = per_tract/tot_pop)
+head(aug_census_comb$ncp)
+
+clark.mod.ncp<- lm(ncp ~ perc_black+ perc_asian + perc_other +perc_latino +
+                     attempt2 + some_college + associate +
+                     bachelor + graduate + renter, data = aug_census_comb)
+                   
+summary(clark.mod.ncp)
+
+# Re-do of smartphone with out attemp for income: 
+# Smartphone requests: 
+aug_census_comb <- aug_census_comb %>% mutate(ncs = smartphone/tot_pop)
+clark.smartphone.mod <-lm(ncs ~ perc_black+ perc_asian + perc_other +perc_latino +
+                            income_15_to_24+ income_35_to_49 +income_75_to_99 + income_100_to_149+
+                            highschool + some_college + associate +
+                            bachelor + graduate + renter, data = aug_census_comb)
+summary(clark.smartphone.mod)
+# now using attempt for the income 
+clark.smartphone.mod <-lm(smartphone ~ perc_black+ perc_asian + perc_other +perc_latino +
+                            attempt2 +
+                            highschool + some_college + associate +
+                            bachelor + graduate + renter, data = aug_census_comb)
+summary(clark.smartphone.mod)
