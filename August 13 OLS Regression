@@ -1,0 +1,235 @@
+####################################################################################################
+### Running the OLS regression #####################################################################
+####################################################################################################
+# August 13, 2018:
+# Before I run the OLS regression I need to (1) divide the tracts by median income (2) then divide 
+# the calls by request type 
+
+# So The study from clark et al. uses the income % at this certain threshold and then does a 
+# regression based on that. But i said that I would add it in by level however, I can grab the variables 
+# for that from actual census variables. So, i'm going back to the script from yesterday and then going to pull that data. I can 
+# just delete columns if I need to. 
+
+# Land area (https://www.census.gov/quickfacts/fact/note/US/LND110210; this website says what units
+# land area is measured in.Divide by 2,589,988. originally in square meters)
+
+# So it worked out fine. 
+# To replicate their study ols regression I need: 
+# percent population black
+# percent population asian
+# percent population other
+# percent population hispanic
+# % families income under 25
+# % families income 25- 50
+# % families income 75- 100
+# % families income 100- 150
+# % highschool
+# % some college
+# % associate
+# % bachelors
+# % graduate
+# % renting
+# population logged
+
+# Then I need to categorize the phone calls...
+# So from previous work and Hye-Seons tables on the google doc I know our Top calls are from:
+# top 5 methods: phone, XTERFACE, XTERNEAT, INHOUSE, EMAIL. The clark et al study uses
+#   (1) total requests (all methods)
+#   (2) departmental requests (Xterface and xterneat)
+#   (3) citizen requests (clark et al makes it all requests regardless of communication method 
+#       This will be all minus MAYOFF, XTERNEAT, and XTERFACE)
+#   (4) hotline requests (Mayoff)
+#   (5) internet requests (request made on website indicated by WEB)
+#   (6) smartphone requests (Iphone and android)
+
+# Now I will get the total requests per tract
+detach("package:plyr", unload=TRUE) 
+per_tract<- August13 %>% group_by(TRACTCE10) %>% summarise(per_tract = n()) %>% arrange(TRACTCE10)
+head(per_tract)
+
+# Now do the summary for departmental requests:
+department <- August13 %>% filter(Method.Received == "XTERFACE" | Method.Received == "XTERNEAT")%>% 
+              group_by(TRACTCE10) %>% summarise(department = n()) %>% arrange(TRACTCE10)
+head(department)
+
+# Practice a merge because the data sets will be unequal
+df1<- cbind(c(103, 2, 5,7,8), c(9,88,87,90,6))
+as.data.frame(df1)
+df1<- merge(per_tract, department, all= TRUE, by = "TRACTCE10")
+head(df1)
+#Awesome it works, then I can just change the NA's to zeros!!! 
+
+#Now do the summary for citizen requests. 
+dont_want <- c("XTERFACE", "XTERNEAT", "MAYOFF") 
+#from: https://www.r-bloggers.com/the-notin-operator/ 
+`%notin%` <- Negate(`%in%`)
+cit_request <- August13 %>% filter(Method.Received %notin% dont_want)%>% 
+  group_by(TRACTCE10) %>% summarise(cit_request = n()) %>% arrange(TRACTCE10)
+head(cit_request)
+
+# Now the hotline request:
+hotline <- August13 %>% filter(Method.Received == "MAYOFF")%>% 
+  group_by(TRACTCE10) %>% summarise(hotline = n()) %>% arrange(TRACTCE10)
+head(hotline)
+
+# Now the internet requests through the website:
+internet <- August13 %>% filter(Method.Received == "WEB")%>% 
+  group_by(TRACTCE10) %>% summarise(internet = n()) %>% arrange(TRACTCE10)
+head(internet)
+
+# Now smartphone requests: 
+smartphone <- August13 %>% filter(Method.Received == "IPHONE" | Method.Received == "ANDROID")%>% 
+  group_by(TRACTCE10) %>% summarise(smartphone = n()) %>% arrange(TRACTCE10)
+head(smartphone)
+
+# Just a note: The last three have very little amounts of requests
+
+# Ok now let's merge these, replace the zeros, then add it to the other data set. Here we go. 
+# We are merging 
+# (1) per_tract
+# (2) department
+# (3) cit_request
+# (4) hotline
+# (5) internet
+# (6) smartphone
+head(requests)
+
+requests <- merge(per_tract, department, all = TRUE, by = "TRACTCE10")
+requests <- merge(requests, cit_request, all = TRUE, by = "TRACTCE10")
+requests <- merge(requests, hotline, all = TRUE, by = "TRACTCE10")
+requests <- merge(requests, internet, all = TRUE, by = "TRACTCE10")
+requests <- merge(requests, smartphone, all = TRUE, by = "TRACTCE10")
+
+#Rename the first column
+library(plyr)
+names(requests)
+names(requests)[names(requests) == 'TRACTCE10'] <- 'tract'
+head(requests, 50)
+
+# Change the NA's to 0's 
+requests[is.na(requests)]<- 0
+
+# Combine the data sets: 
+aug_census_comb <-left_join(censusdata2, requests, by= "tract")
+View(aug_census_comb)
+
+# Ok run the regression: 
+attach(aug_census_comb)
+names(aug_census_comb)
+#[1] "X1"                     "tract"                  "land_area"              "water_area"            
+#[5] "med_age"                "Occupied_housing_units" "renter_occupied"        "med_income"            
+#[9] "mean_income"            "perc_female"            "perc_male"              "perc_black"            
+#[13] "perc_asian"             "perc_native"            "perc_white"             "perc_latino"           
+#[17] "perc_other"             "house_with_child"       "occupied_house"         "renter"                
+#[21] "foreign"                "naturalized"            "non_citizen"            "associate"             
+#[25] "highschool"             "bachelor"               "graduate"               "some_college"          
+#[29] "year_15_to_19"          "year_20_to_24"          "year_65_up"             "perc_under_poverty"    
+#[33] "unemployment_rate"      "per_cap_income"         "tot_pop"                "income_15_to_24"       
+#[37] "income_35_to_49"        "income_50_to_74"        "income_75_to_99"        "income_100_to_149"     
+#[41] "per_tract"              "department"             "cit_request"            "hotline"               
+#[45] "internet"               "smartphone" 
+
+# To replicate their study ols regression I need: 
+# percent population black
+# percent population asian
+# percent population other
+# percent population hispanic
+# % families income under 25
+# % families income 25- 50
+# % families income 75- 100
+# % families income 100- 150
+# % highschool
+# % some college
+# % associate
+# % bachelors
+# % graduate
+# % renting
+# population logged
+
+str(aug_census_comb$per_tract)
+as.numeric(aug_census_comb$per_tract)
+as.data.frame(aug_census_comb)
+
+clark.mod <- lm(per_tract ~ perc_black+ perc_asian + perc_other +perc_latino +
+                 income_15_to_24+ income_35_to_49+ income_50_to_74 +income_75_to_99 + 
+                  income_100_to_149 + highschool + some_college + associate +
+                  bachelor + graduate + renter + log(tot_pop), data = aug_census_comb)
+summary(clark.mod)
+
+
+# Departmental requests
+clark.depo.mod <-lm(department ~ perc_black+ perc_asian + perc_other +perc_latino +
+                     income_15_to_24+ income_35_to_49+ income_50_to_74 +income_75_to_99 + 
+                     income_100_to_149 + highschool + some_college + associate +
+                     bachelor + graduate + renter + log(tot_pop), data = aug_census_comb)
+summary(clark.depo.mod)
+
+# Citoizen requests
+clark.cit.mod <-lm(cit_request ~ perc_black+ perc_asian + perc_other +perc_latino +
+                      income_15_to_24+ income_35_to_49+ income_50_to_74 +income_75_to_99 + 
+                      income_100_to_149 + highschool + some_college + associate +
+                      bachelor + graduate + renter + log(tot_pop), data = aug_census_comb)
+summary(clark.cit.mod)
+
+# Hotline requests
+clark.hot.mod <-lm(hotline ~ perc_black+ perc_asian + perc_other +perc_latino +
+                     income_15_to_24+ income_35_to_49+ income_50_to_74 +income_75_to_99 + 
+                     income_100_to_149 + highschool + some_college + associate +
+                     bachelor + graduate + renter + log(tot_pop), data = aug_census_comb)
+summary(clark.hot.mod)
+
+#Internet requests: 
+clark.int.mod <-lm(internet ~ perc_black+ perc_asian + perc_other +perc_latino +
+                     income_15_to_24+ income_35_to_49+ income_50_to_74 +income_75_to_99 + 
+                     income_100_to_149 + highschool + some_college + associate +
+                     bachelor + graduate + renter + log(tot_pop), data = aug_census_comb)
+summary(clark.int.mod)
+
+# Smartphone requests: 
+clark.smartphone.mod <-lm(smartphone ~ perc_black+ perc_asian + perc_other +perc_latino +
+                     income_15_to_24+ income_35_to_49+ income_50_to_74 +income_75_to_99 + 
+                     income_100_to_149 + highschool + some_college + associate +
+                     bachelor + graduate + renter + log(tot_pop), data = aug_census_comb)
+summary(clark.smartphone.mod)
+
+# All the models are run, now going to replicate other study
+# (1) land area (square meter)
+# (2) water area (square meter)
+# (3) mean income
+# (4) population
+# (5) median age
+# (6) % female
+# 7. black
+# 8. asian 
+# 9. latino 
+# 10. house with children 
+# 11. percent occupied housing units (only have raw)
+# 12. rented units
+# 13. high school
+# 14. foreign born (only have raw, probs won't use and didn't)
+# 15. naturalized
+# 16. non-citizen
+
+carvallo.mod <- lm(per_tract ~ land_area + water_area + mean_income + tot_pop + med_age + perc_female + perc_black +
+                     perc_asian + perc_latino + house_with_child + occupied_house + renter + highschool +
+                     naturalized + non_citizen, data = aug_census_comb)
+summary(carvallo.mod)
+
+
+# Let's try to add levels to the income
+med_income_f <- aug_census_comb$med_income
+str(med)
+med <- factor(med, levels = c(med< 25000 = "under_25", med>= 25000 | med < 50000 = "between_25&50", 
+                              med > 50000 | med < 75000 = "between_50&75"))
+
+aug_census_comb$attempt<-cut(aug_census_comb$med_income, c(0,25000,50000,75000,100000,500000), right=FALSE)
+aug_census_comb$attempt2<-cut(aug_census_comb$med_income, c(0,25000,50000,75000,100000,500000), right=FALSE, labels = c(1:5))
+View(aug_census_comb)
+# Great what this just did was categorize the data by its amount, perfect...
+
+# Rerunning the regression 
+clark.mod2 <- lm(per_tract ~ perc_black+ perc_asian + perc_other +perc_latino +
+                  attempt2 + some_college + associate +
+                  bachelor + graduate + renter + log(tot_pop), data = aug_census_comb)
+summary(clark.mod2)
+
