@@ -1,0 +1,215 @@
+###########################################################################################################
+########### August 25th ###################################################################################
+###########################################################################################################
+# After speaking to the Manager of Miami 311 Call center my professor made some changes. Turns out the data
+# is sort of bias. We can't use all the data because 311 center doesn't make requests for every city equally.
+# So it has to only used for the City of Miami. This new data will only include that. 
+
+# Before I put the data in R today I cleaned it up in excel. I removed all cases that were not indicated as
+# being part of the City of Miami. I also kept all calls associated with these methods: 
+   ### MOBILE
+   ### IPHONE
+   ### ANDROID
+   ### EMAIL
+   ### WEB
+   ### WALKIN
+   ### FAX
+   ### OTHER
+   ### MAIL
+   ### MAYOFF
+   ### SOCIALMEDIA
+   ### PHONE
+
+# Ok so today I want to make a table of the frequency and percent these methods appear 
+# in the data and then provide summary statistics about the demographics that make these calls so LET'S GO!
+
+# Load in 
+City_of_Miami_call_data <- read_csv("City_of_Miami_call_data.csv")
+City_of_Miami_call_data <- na.omit(City_of_Miami_call_data)
+library(dplyr)
+phone <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "PHONE") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(phone = n())
+
+mobile <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "MOBILE") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(mobile = n())
+
+iphone <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "IPHONE") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(iphone = n ())
+
+android <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "ANDROID") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(android = n ())
+
+email <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "EMAIL") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(email = n ())
+
+web <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "WEB") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(web = n ())
+
+walkin <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "WALKIN") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(walkin = n ())
+
+fax <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "FAX") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(fax = n ())
+
+other <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "OTHER") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(other = n ())
+
+mail <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "MAIL") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(mail = n ())
+
+mayoff <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "MAYOFF") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(mayoff = n ())
+
+socialmedia <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  filter(Method.Received == "SOCIALMEDIA") %>% 
+  group_by(TRACTCE10) %>%
+  summarise(socialmedia = n ())
+
+all_call <- City_of_Miami_call_data %>% 
+  select(TRACTCE10, Method.Received) %>%
+  group_by(TRACTCE10) %>%
+  summarise(all = n ())
+
+City_of_Miami_call_data %>% 
+  distinct(Method.Received)
+
+# Now we will create a new data set with just these numbers then merge it as we need to. 
+request_method <- merge(all_call, mobile, all = TRUE, by = "TRACTCE10")
+head(request_method)
+request_method <- merge(request_method, iphone, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, android, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, email, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, web, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, walkin, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, fax, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, other, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, mail, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, mayoff, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, socialmedia, all = TRUE, by = "TRACTCE10")
+request_method <- merge(request_method, phone, all = TRUE, by = "TRACTCE10")
+head(request_method)
+
+# Now change all the NA's to 0's 
+request_method[is.na(request_method)]<- 0
+head(request_method)
+
+# Let's create the new mobile variable
+request_method %>%
+  mutate(n.mobile = mobile + iphone + android)
+
+# ok great let's get the frequency and percent for all calls in general not by tract. To do this, 
+# we are going back to the other data set. 
+City_of_Miami_call_data %>%
+  summarize(calls = n()) 
+   ### the code above shows we have 51,765 calls all together
+City_of_Miami_call_data %>%
+  select(Method.Received) %>%
+  group_by(Method.Received) %>%
+  summarize(n())
+# A tibble: 12 x 2
+#Method.Received `n()`
+#<chr>           <int>
+#1 ANDROID           508
+#2 EMAIL             901
+#3 FAX               264
+#4 IPHONE           1348
+#5 MAIL               19
+#6 MAYOFF              8
+#7 MOBILE             27
+#8 OTHER               2
+#9 PHONE           47297
+#10 SOCIALMEDIA        28
+#11 WALKIN            157
+#12 WEB              1206
+
+City_of_Miami_call_data %>%
+  select(Method.Received) %>%
+  group_by(Method.Received) %>%
+  summarize(n(), percent = n()/51765 * 100)%>%
+  arrange(desc(percent))
+# A tibble: 12 x 3
+# Method.Received `n()`  percent
+# <chr>           <int>    <dbl>
+#1 PHONE           47297 91.4    
+#2 IPHONE           1348  2.60   
+#3 WEB              1206  2.33   
+#4 EMAIL             901  1.74   
+#5 ANDROID           508  0.981  
+#6 FAX               264  0.510  
+#7 WALKIN            157  0.303  
+#8 SOCIALMEDIA        28  0.0541 
+#9 MOBILE             27  0.0522 
+#10 MAIL               19  0.0367 
+#11 MAYOFF              8  0.0155 
+#12 OTHER               2  0.00386
+  
+#######################################################################################################
+######## Doing some descriptive statistics ############################################################
+#######################################################################################################
+
+# We first have to get the tracts from the census data I already have on file. 
+# I need to add the 18 to 24 year old data to the set
+names(ett_data)[names(ett_data) == 'S0101_C01_022E'] <- 'eight_to_24'
+names(ett_data)
+ett <- ett_data %>%
+  select(county, tract, eight_to_24) %>%
+  filter(county == "086") %>%
+  select(tract, eight_to_24)
+
+censusdata2 <- left_join(censusdata2,ett, by = "tract")
+View(censusdata2)
+
+# Now add zeros to the tract in City of miami call data and I have to change the name that way when 
+# they can merge properly
+names(City_of_Miami_call_data)[names(City_of_Miami_call_data) == 'TRACTCE10'] <- 'tract'
+names(City_of_Miami_call_data)
+City_of_Miami_call_data$tract <- add.zero(City_of_Miami_call_data$tract)
+View(City_of_Miami_call_data)
+
+# isolate the tracts
+miami_call_tracts <- City_of_Miami_call_data %>% 
+  select(tract) %>%
+  distinct(tract)
+
+# Use those tracts to select the census data
+City_of_Miami_census <- left_join(miami_call_tracts, censusdata2, by = "tract")
+View(City_of_Miami_census)
+   ### Great its DONE! 
+
+# To run the statistics im going to use:
+library(summarytools)
+view(dfSummary(City_of_Miami_census))
