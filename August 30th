@@ -1,0 +1,121 @@
+# August 30th...
+
+# Today I am going to clean up the call data and send that to one of the Doctors working on the project with
+# Dr. Hagen. 
+
+# I did some prior cleaning in excel and  so I am left with a data set containing only city of Miami
+# 311 service reports and then I am also left with data only containing phone, n.mobile == "smartphone app"
+# and the other categories. 
+
+# My first task is to select only the tracts that have census data tied to them. 
+# Then I want to label mobile, android, and iphone and label them to a new category called "Smartphone App" 
+# I'm not sure if I should make the delayed variable but I will anyway. 
+# Maybe also attach in another dataset: 
+   # The number of calls per tract
+   # the number of calls per tract per category
+   # then the number of delayed calls per tract
+
+# The data sets I am using are: 
+   # City_Miami_census_Aug28.csv 
+   # Aug30CallData.csv
+
+##################################################################################################
+
+# First I want to select the tracts present in City Miami census
+View(City_Miami_census)
+# To grab the tracts I will just select the tract column of th data set and save it to a vector. 
+city_of_miami_tracts <- City_Miami_census$tract
+
+# Using the above vector I will  select only the tracts that we want from the csv file Aug30CallData
+# Read in the file
+View(Aug30CallData)
+names(Aug30CallData)
+str(Aug30CallData)
+as.character(Aug30CallData$TRACTCE10)
+# We have to add the zeros to the tracts so they can be pulled later
+Aug30CallData$TRACTCE10 <- add.zero(Aug30CallData$TRACTCE10)
+library(dplyr)
+Call_Data_Aug30 <- Aug30CallData %>% filter(TRACTCE10 %in% city_of_miami_tracts)
+View(Call_Data_Aug30)
+# 53,580 rows
+
+##################################################################################################
+
+# Ok now I want to add levels to the data which will lump android, iphone, and mobile together. 
+Call_Data_Aug30$Method.Received <- as.factor(Call_Data_Aug30$Method.Received)
+levels(Call_Data_Aug30$Method.Received) <- list(SMARTPHONE_APP = "ANDROID", OTHER= "OTHER", EMAIL = "EMAIL",
+                                                PHONE = "PHONE", FAX = "FAX", SOCIALMEDIA= "SOCIALMEDIA", SMARTPHONE_APP = "IPHONE",
+                                                WALKIN = "WALKIN", MAIL = "MAIL", WEB = "WEB", MAYOR_OFFICE = "MAYOFF", 
+                                                SMARTPHONE_APP = "MOBILE")
+#################################################################################################
+
+# Next I want to create the delayed variable and add it to the data set
+Call_Data_Aug30 <- Call_Data_Aug30 %>% mutate(delayed_days = Goal.Days - Actual.Completed.Days)
+
+# Now I'm going to remove any calls that don't have actual days completed
+Call_Data_Aug30 <- Call_Data_Aug30 %>% filter(!is.na(Actual.Completed.Days))
+
+# I also observed a value that was negative so I'm going to remove it
+Call_Data_Aug30 <- Call_Data_Aug30 %>% filter(Actual.Completed.Days != "-15876")
+
+# There are other isssues I see as well such as that some actual.days are equal to zero. 
+# I wonder what this means...
+# As for now I will not remove them. But I will note it to my professor. I don't want to overstep there
+
+# Now create the bi_delayed variable in case
+Call_Data_Aug30 <- Call_Data_Aug30 %>% mutate(delayed = delayed.variable(delayed_days))
+
+write.csv(Call_Data_Aug30, "Call_Data_Aug30.csv")
+#########################################################################################################
+
+# Ok now I'm going to make some statistics just for myself really so that it is easier to run
+# the regression models
+
+# I'm going to get call per_tract...perhaps I can do all at once...
+# I am also redoing this because this Is the call data I will use from now on
+call_stats <- Call_Data_Aug30 %>% 
+  select(TRACTCE10, Method.Received)%>%
+  group_by(TRACTCE10, Method.Received)%>%
+  summarise(sums = n())
+
+library(tidyr)
+
+#Tidy the data so the methods received are now across the top as variables
+call_stats_wide <- call_stats %>% 
+  spread(Method.Received, sums)
+call_stats_wide[is.na(call_stats_wide)]<- 0
+
+# Now get calls per tract
+PER_TRACT <- Call_Data_Aug30 %>% 
+  select(TRACTCE10, Method.Received)%>%
+  group_by(TRACTCE10)%>%
+  summarise(PER_TRACT = n())
+#Attach it to the data set
+call_stats_wide <- merge(call_stats_wide, PER_TRACT, all = TRUE, by = "TRACTCE10")
+
+# Now get the delayed variables per tract
+delayed <- Call_Data_Aug30 %>% 
+  select(TRACTCE10, delayed)%>%
+  filter(delayed == "1")%>%
+  group_by(TRACTCE10)%>%
+  summarise(DELAYED = n())
+#Now attach it to the data set using merge
+call_stats_wide <- merge(call_stats_wide, delayed, all = TRUE, by = "TRACTCE10")
+
+# Now I'm adding the percents for each 
+call_stats_percents <- call_stats_wide %>%
+  mutate(perc_smartapp = SMARTPHONE_APP/PER_TRACT,
+         perc_other = OTHER/PER_TRACT,
+         perc_email = EMAIL/PER_TRACT,
+         perc_phone = PHONE/PER_TRACT,
+         perc_fax = FAX/PER_TRACT,
+         perc_socialmedia = SOCIALMEDIA/PER_TRACT,
+         perc_walkin = WALKIN/PER_TRACT,
+         perc_mail = MAIL/PER_TRACT, 
+         perc_web = WEB/PER_TRACT, 
+         perc_mayor = MAYOR_OFFICE/PER_TRACT,
+         perc_delayed = DELAYED/PER_TRACT) 
+
+write.csv(call_stats_percents, "call_stats_percents.csv")
+write.csv(call_stats_wide, "call_stats.csv")
+write.csv(Call_Data_Aug30, "City_Miami_call_data_Aug30")
