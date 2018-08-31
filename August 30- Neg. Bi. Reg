@@ -1,0 +1,202 @@
+# August 30th Doing Negative Binomial Regression and comparing it to the Log(dependent) OLS
+# I have been given several variables to look at:
+# Total Calls
+# Road & Bridge (RB) Calls - include side walk
+# Communication (C) Calls
+# Traffic Engineering & Signal (TES) Calls
+# RB+C Calls
+# RB+TES Calls
+# RB+TES+C Calls
+
+# I need to familiarize myself with the data inorder to form these categories. I'm going to do this by 
+# looking in excel and then jotting down which issue types fall into this. I will be using the 
+# City_Miami_call_data_Aug30. 
+
+# Side walk related are specified as: 
+# ( ADA ) SIDEWALK OBSTRUCTION REMOVAL
+# ( ADA ) SIDEWALK REPAIR
+# and under the case owner: Public_Works_Right_Of_Way_4_60
+# Road and bridges: Public_Works_Road_And_Bridges_16_60
+
+# Communications: Communications_Department
+
+# TES Calls: 
+# Public_Works_traffic_Signals_And_Signs_15_60
+# Public_Works_Traffic_Engineering_10_60
+
+# Will be using -
+# Call data: City_Miami_call_data.csv
+# Census data: City_Miami_Census_Aug28.csv
+
+##################################################################################################
+# First I want to get the sidewalk data
+rb <- Call_Data_Aug30 %>%
+  filter(category == "Public_Works_Road_And_Bridges_16_60" | Issue.Type == "( ADA ) SIDEWALK REPAIR" | Issue.Type == "( ADA ) SIDEWALK OBSTRUCTION REMOVAL")%>%
+  group_by(TRACTCE10)%>%
+  summarise(RB = n())
+View(rb)
+
+c <- Call_Data_Aug30 %>%
+  filter(category == "Communications_Department")%>%
+  group_by(TRACTCE10)%>%
+  summarise(C = n())
+View(c)
+
+tes <- Call_Data_Aug30 %>%
+  filter(category == "Public_Works_traffic_Signals_And_Signs_15_60" | 
+           category == "Public_Works_Traffic_Engineering_10_60")%>%
+  group_by(TRACTCE10)%>%
+  summarise(TES = n())
+View(tes)
+
+#Merge them 
+request_categories <- merge(rb, c, all = TRUE, by = "TRACTCE10")
+request_categories <- merge(request_categories, tes, all = TRUE, by = "TRACTCE10")
+
+# Change Na's to zeros
+request_categories[is.na(request_categories)] <- 0
+
+# Add the added categories
+request_categories <- request_categories %>%
+  mutate(RB_C = RB+C, RB_TES = RB+TES, RB_C_TES = RB+C+TES)
+
+# Now add the total calls
+per_tract <- call_stats_wide %>% select(TRACTCE10, PER_TRACT)
+request_categories <- merge(request_categories, per_tract, all = TRUE, by = "TRACTCE10")
+
+##################################################################################################
+
+# I want to attach it to the census data
+names(request_categories)[names(request_categories) == 'TRACTCE10'] <- "tract"
+City_Miami_census <- merge(City_Miami_census, request_categories, all= TRUE, by = "tract")
+
+write.csv(City_Miami_census, "COM_census_with_requestcats.csv")
+##################################################################################################
+
+# The negative binomial regression: 
+# Following this website
+# https://stats.idre.ucla.edu/r/dae/negative-binomial-regression/ 
+
+# Load in packages: 
+library(MASS)
+library(ggplot2)
+
+# Run some descriptive stats
+str(City_Miami_census)
+summary(City_Miami_census)
+names(City_Miami_census)
+
+City_Miami_census <- City_Miami_census %>% mutate(log_pop = log(tot_pop))
+
+# Run the model
+m.per.tract <- glm.nb(PER_TRACT ~ perc_black + perc_latino + perc_asian + perc_other + 
+                     income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                       highschool + some_college + associate + bachelor + graduate + 
+                       renter + eight_to_24 +log_pop, data = City_Miami_census)
+summary(m.per.tract)
+
+m.RB <- glm.nb(RB ~ perc_black + perc_latino + perc_asian + perc_other + 
+                        income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                        highschool + some_college + associate + bachelor + graduate + 
+                        renter + eight_to_24 + log_pop, data = City_Miami_census)
+summary(m.RB)
+
+# Communications
+m.C <- glm.nb(C ~ perc_black + perc_latino + perc_asian + perc_other + 
+                 income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                 highschool + some_college + associate + bachelor + graduate + 
+                 renter + eight_to_24 +log_pop, data = City_Miami_census)
+summary(m.C)
+
+m.TES <- glm.nb(TES ~ perc_black + perc_latino + perc_asian + perc_other + 
+                income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                highschool + some_college + associate + bachelor + graduate + 
+                renter + eight_to_24 +log_pop, data = City_Miami_census)
+summary(m.TES)
+
+m.RB_C <- glm.nb(RB_C ~ perc_black + perc_latino + perc_asian + perc_other + 
+                  income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                  highschool + some_college + associate + bachelor + graduate + 
+                  renter + eight_to_24 +log_pop, data = City_Miami_census)
+summary(m.RB_C)
+
+####
+# WARNING APPEARED: 
+# Warning messages:
+#1: glm.fit: algorithm did not converge 
+# 2: In glm.nb(RB_C ~ perc_black + perc_latino + perc_asian + perc_other +  :
+               #alternation limit reached
+# https://stats.stackexchange.com/questions/310416/validity-of-negative-binomial-model-algorithm-did-not-converge-and-alternation
+# Website said to increase iterations....
+# This could be because of the amount of zeros also appeared in RB 
+
+m.RB_TES <- glm.nb(RB_TES ~ perc_black + perc_latino + perc_asian + perc_other + 
+                   income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                   highschool + some_college + associate + bachelor + graduate + 
+                   renter + eight_to_24 +log_pop, data = City_Miami_census)
+summary(m.RB_TES)
+
+m.RB_C_TES <- glm.nb(RB_C_TES ~ perc_black + perc_latino + perc_asian + perc_other + 
+                     income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                     highschool + some_college + associate + bachelor + graduate + 
+                     renter + eight_to_24 +log_pop, data = City_Miami_census)
+summary(m.RB_C_TES)
+
+###########################################################################################
+
+# Now doing the ols: *** Can't log reg with zero
+ols.rb_c_tes <- lm(log(RB_C_TES) ~ perc_black + perc_latino + perc_asian + perc_other + 
+                       income_15_to_24 + income_35_to_49 + income_75_to_99 + income_100_to_149 +
+                       highschool + some_college + associate + bachelor + graduate + 
+                       renter + eight_to_24 +log_pop, data = City_Miami_census)
+summary(ols.rb_c_tes)
+
+
+##############################################################################################
+
+# Now I want to do the graph of 
+# This will use th call data 
+
+str(Call_Data_Aug30)
+# We are using the call column and only the data pertaining to smartphone app
+
+data_for_graph <- Call_Data_Aug30 %>%
+  filter(Method.Received == "SMARTPHONE_APP")%>%
+  group_by(Date)%>%
+  summarise(total = n())%>%
+  arrange(desc(Date))
+
+# Now I need to format the dates and make sure R recognizes that
+data_for_graph$Date <- as.Date(data_for_graph$Date, "%m/%d/%Y")
+str(data_for_graph)
+
+# https://www.r-bloggers.com/plotting-time-series-data-using-ggplot2/ 
+# Now lets attempt the graph scale_x_date(format= "%b-%Y")
+# https://www.neonscience.org/dc-time-series-plot-ggplot-r 
+library(scales)
+start <- as.Date("2013-01-01")
+end <- as.Date("2018-02-25")
+start.end <- c(start, end)
+
+start2 <- as.Date("2015-21-01")
+end2 <- as.Date("2018-02-25")
+start.end2 <- c(start2, end2)
+
+ggplot(data_for_graph, aes(Date, total)) +
+  geom_line() + 
+  xlab("Months") + 
+  ylab("Count") +
+  (scale_x_date(labels=date_format("%b-%y"), 
+breaks = date_breaks(width = "3 months"), limits = start.end))
+# This isn't great and will need to be improved...
+
+ggplot(data_for_graph, aes(Date, total)) +
+  geom_line() + 
+  xlab("Months") + 
+  ylab("Count") +
+  (scale_x_date(labels=date_format("%b-%y"), 
+                breaks = date_breaks(width = "3 months"), limits = start.end2))
+
+
+write.csv(City_Miami_census, "City_Miami_census_Aug30.csv")
+
