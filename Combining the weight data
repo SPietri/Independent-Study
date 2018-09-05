@@ -1,0 +1,61 @@
+# Ok so tody I am merging three data sets. I'm going to attempt to do this in 
+# under one hour. 
+
+# Here is my game plan: 
+# (1) get the average for each FID
+# (2) Filter the document with FID code + tracts for just the tracts in the census doc
+# (3) Then pull the FID codes from the weight csv by using %in%
+# (4) Then merge it to the census+ tract file by FID code
+# (5) then merge that data set to the census data doc 
+
+# OK Let's go!!!
+
+# First I need to load in all my data sets
+#weights, my_census, FID_Tract
+
+# Load in required packages
+library(dplyr)
+
+# Ok the code below will get the mean weights. 
+mean_weights <- weights %>% 
+  group_by(first.0) %>%
+  select(first.0, secon.120)%>%
+  summarize(mean= mean(secon.120))
+
+# Ok now I need to get the 119 tracts present in the census data
+mc_tracts<- my_census$tract
+# this is a character
+
+# Now I need to go into FID_Tract and pull only the tracts present in the census data
+# We will call this FT for fid and tracts. 
+ft <- FID_Tract %>%
+  select(FID_1, TRACTCE) %>%
+  filter(TRACTCE %in% mc_tracts)
+# Only 107 tracts; Missing 001005 and one other. 
+
+# Get the FID codes we want. I'm just taking all the environment room I need 
+# Today I guess...
+fidcodes<- ft$FID_1
+
+# Now select codes from weight data
+mean_weights <- mean_weights %>%
+  filter(first.0 %in% fidcodes)
+
+# Merge mean weights and ft by FID. First I have to rename one of them to match
+colnames(mean_weights)[colnames(mean_weights) == 'first.0'] <- 'FID_1'
+weights_and_tracts<- left_join(mean_weights, ft, by = "FID_1")
+View(weights_and_tracts)
+
+#Rename mean
+colnames(weights_and_tracts)[colnames(weights_and_tracts) == "mean"] <- "mean_weights"
+colnames(weights_and_tracts)[colnames(weights_and_tracts) == "TRACTCE"] <- "tract"
+
+# Lastly, left join it to the census data 
+City_Of_Miami_variables_Sept_5 <- my_census %>%
+  filter(tract %in% weights_and_tracts$tract) 
+
+City_Of_Miami_variables_September_5 <- 
+  left_join(City_Of_Miami_variables_Sept_5, weights_and_tracts, by = "tract" )
+
+write.csv(City_Of_Miami_variables_September_5, 
+          "City_Of_Miami_variables_September_5.csv")
